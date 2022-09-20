@@ -1,114 +1,155 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
 
-#define TITLE "DECIMAL TO RADIX-i converter"
-#define AUTHOR "TANAKA"
-#define YEAR 2022
-int main()
+#include "main.h"
+#include "stm32f0xx.h"
+
+#define DELAY1 1000  //constant for main loop
+#define DELAY2 800   //constant for nested loop
+
+#define TRUE 1
+#define FALSE 0
+
+void initGPIO(void);
+void delay(void);
+void firstDisplay(void);
+void secondDisplay(void);
+void thirdDisplay(void);
+void checkPB(void);
+void display(void);
+
+uint32_t bitpattern1 =  0; //turns all LEDs off
+uint32_t bitpattern2 = 0b11111111; //turns all LEDs on
+uint32_t bitpattern3 = 0b10101010; //turns alternating LEDs off
+
+typedef uint8_t flag_t;
+flag_t startFlag = FALSE;
+flag_t firstFlag = FALSE;
+flag_t secondFlag = FALSE;
+flag_t thirdFlag = FALSE;
+
+int main(void)
 {
-    int radix,j,i,qoutient,reminder;
-    int dec = 1;
-    for (j = 1;j<30;j++)
-    {
-        printf("*");     //displays a line of starts
-    }
-    printf("\n");
+	initGPIO();
 
-//to display the program name,
-//programmer and date created
+  while (1)
+  {
 
-    printf("%s \n",TITLE);
-    printf("Written by:%s\n",AUTHOR);
-    printf("Date: %d \n", YEAR);
+	  display();
 
-    for (j = 1;j<30;j++)
-    {
-        printf("*");
-    }
-    printf("\n");
+  }
 
-//loop to continuously run the program,
-//until a value of less than one is entered
-//terminates the program and display EXIT
-
-    while(dec > 0){
-         printf("Enter a decimal number: ");
-         scanf("%d",&dec);
-         if (dec< 0){
-            printf("EXIT");
-            break;}
-
-         else {
-            printf("The number you have entered is %d \n",dec);
-            printf("Enter a radix for the converter between 2 and 16: ");
-            scanf("%d",&radix);
-            printf("The radix you have entered is %d \n",radix);
-         }
-
-         double dec_double = dec,log_result;
-         log_result = log2(dec_double);
-         printf("The log2 of the number is %.2f \n",log_result);
-
-         qoutient = dec/radix;
-         printf("The integer result of the number divided by %d is %d \n",radix,qoutient);
-
-         reminder = dec % radix;
-         printf("The remainder is %d \n",reminder);
-
-//calls function that displays
-// the radix equavalent to decimal
-         Dec2RadixI(dec,radix);
-
-
-    }
-
-    return 0;
 }
-void Dec2RadixI(int decValue, int radValue ){
 
-//calculate the size of an array
-//to store the radix equalavent
 
-     double dec_double = decValue, rad_double = radValue,log_res;
-     log_res = ((log10(dec_double))/(log10(rad_double)));
-     int size = (log_res +1) ;
+void initGPIO(void)
+{
+	RCC-> AHBENR |= RCC_AHBENR_GPIOBEN; //enable the clock for port b
+	RCC-> AHBENR |= RCC_AHBENR_GPIOAEN; //enable the clock for port a
+	//GPIOA pins reset state is digital input mode
+	//hence no need to set them to input mode
 
-//form array to store the result
+	GPIOB -> MODER |= 0x00005555; //makes all the LEDS digital output mode
+	GPIOB -> ODR = 0; //ensure all the LEDs are off
 
-     char str[size];
-     int temp,result[size];
+	GPIOA -> PUPDR |= 0x00000055; //turns on the pull resistors for port a
 
-//continuous division of the decimal by radix
-//storing the reminder in array to form result
 
-     for(int i=0;decValue>0;i++){
-            result[i]=decValue%radValue;
-            decValue = decValue/radValue;
-     }
-//store the reminders from bottom up,
-//reverse the result array
-     for(int k = 0;k< (size/2) ; k++){
-        temp = result[k];
-        result[k] = result[size-k-1];
-        result[size-k-1] = temp;
-     }
-//change integer values after nine
-//to equavalent characters,eg
-//10 = 'A' , 11 = 'B' , etc
 
-     for (int i = 0; i < size; i++)
-    {
-	if (result[i]>= 0 && result[i] <= 9)
-		str[i] = (result[i]+48);
-	else
-		str[i] = (result[i] + 55);
-    }
+}
 
-//print the final result as a string in correct format
-    printf("The radix-%d value is ",radValue);
-    for(int h = 0;h <size; h++){
-        printf("%c", str[h]);
-    }
-    printf("\n");
+void delay(void)
+{
+	for (volatile uint32_t i = 0; i < DELAY1; i++)
+	   {
+
+	    for (volatile uint32_t j = 0; j < DELAY2; j++);
+	   }
+
+}
+
+void firstDisplay(void)
+{
+	GPIOB -> ODR = bitpattern1; //turns all LEDs off
+	delay();
+	GPIOB -> ODR = bitpattern2; //turns all LEDS on
+	delay();
+	GPIOB -> ODR = bitpattern3; //turns alternating LEDs on
+	delay();
+
+}
+
+void secondDisplay(void)
+{
+	volatile uint32_t k = 0;
+	while (k<8)
+	{
+		GPIOB -> ODR = (1<<k) ; //turn each LED on
+		delay();
+		k++;  //increment counter
+	}
+	k=0; //reset counter
+
+}
+
+void thirdDisplay(void)
+{
+	volatile uint8_t counter = 0;
+	while (counter< (256))
+	{
+		GPIOB -> ODR = counter; //displays counter number on LEDs
+		delay();
+		counter++;  //increment counter
+	}
+	counter = 0;  //reset counter
+
+}
+
+void checkPB(void)
+{
+	uint16_t PA0_Pressed = ( ( GPIOA -> IDR & GPIO_IDR_0) == 0) ; // PA0_Pressed == 1 when SW0 is pressed
+	uint16_t PA1_Pressed = ( ( GPIOA -> IDR & GPIO_IDR_1) == 0) ; // PA1_Pressed == 1 when SW1 is pressed
+	uint16_t PA2_Pressed = ( ( GPIOA -> IDR & GPIO_IDR_2) == 0) ; // PA2_Pressed == 1 when SW2 is pressed
+	uint16_t PA3_Pressed = ( ( GPIOA -> IDR & GPIO_IDR_3) == 0) ; // PA3_Pressed == 1 when SW3 is pressed
+
+	if (PA0_Pressed ==1 ) //SW0 pressed raises the startFlag
+	{
+		startFlag = TRUE;
+	}
+	else if (PA1_Pressed ==1) //SW1 pressed raises the firstFlag and startFlag
+	{
+		startFlag = TRUE;
+		firstFlag =TRUE;
+	}
+	else if (PA2_Pressed ==1) //SW2 pressed raises the secondFlag and startFlag
+	{
+		startFlag = TRUE;
+		secondFlag = TRUE;
+	}
+	else if (PA3_Pressed==1) //SW3 pressed raises the thirdFlag and startFlag
+	{
+		startFlag = TRUE;
+		thirdFlag = TRUE;
+	}
+	else{}
+}
+void display(void)
+{
+	checkPB(); //checks which switch is pressed
+
+	if ((startFlag == TRUE)&& (firstFlag == FALSE)&& (secondFlag == FALSE)&&(thirdFlag == FALSE))
+	{
+		GPIOB-> ODR = 0b1; //SW0 turns LED B0 on
+	}
+	else if ((startFlag ==TRUE) && (firstFlag == TRUE)&& (secondFlag == FALSE)&&(thirdFlag == FALSE))
+	{
+		firstDisplay(); //SW1 displays function firstDisplay
+	}
+	else if ((startFlag ==TRUE )&& (firstFlag == FALSE)&&( secondFlag == TRUE)&&(thirdFlag == FALSE))
+	{
+		secondDisplay(); //SW2 displays function secondDisplay
+	}
+	else if ((startFlag ==TRUE) && (firstFlag == FALSE)&& (secondFlag == FALSE)&& (thirdFlag == TRUE))
+	{
+		thirdDisplay(); //SW3 displays function thirdDisplay
+	}
+	else{}
 }
