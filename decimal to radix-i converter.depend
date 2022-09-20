@@ -1,6 +1,0 @@
-# depslib dependency file v1.0
-1661423586 source:c:\users\user\desktop\c programming\decimal to radix-i converter\main.c
-	<stdio.h>
-	<stdlib.h>
-	<math.h>
-
